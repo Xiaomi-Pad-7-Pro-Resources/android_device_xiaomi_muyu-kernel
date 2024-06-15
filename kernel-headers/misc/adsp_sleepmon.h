@@ -1,7 +1,8 @@
 /* SPDX-License-Identifier: GPL-2.0-only WITH Linux-syscall-note */
 /*
- * Copyright (c) 2021, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved.
  */
+
 #ifndef __QCOM_ADSPSLEEPMON_H__
 #define __QCOM_ADSPSLEEPMON_H__
 
@@ -44,8 +45,12 @@ enum adspsleepmon_ioctl_panic_cmd {
     /**< Reset panic on detecting ADSP LPM anomaly to default */
 	ADSPSLEEPMON_RESET_PANIC_LPI,
     /**< Reset panic on detecting ADSP LPI anomaly to default */
+	ADSPSLEEPMON_ENABLE_PANIC_LPM,
+    /**< Enable panic on detecting ADSP LPM anomaly */
+	ADSPSLEEPMON_ENABLE_PANIC_LPI,
+    /**< Enable panic on detecting ADSP LPI anomaly */
 	ADSPSLEEPMON_RESET_PANIC_MAX,
-	/**< Max check for Audio ioctl panic command*/
+    /**< Max check for Audio ioctl panic command*/
 };
 
 /** @struct adspsleepmon_ioctl_audio

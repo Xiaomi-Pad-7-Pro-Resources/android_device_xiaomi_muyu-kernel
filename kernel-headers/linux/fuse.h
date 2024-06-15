@@ -185,11 +185,18 @@
  *  7.34
  *  - add FUSE_SYNCFS
  *
+ *  7.35
+ *  - add FOPEN_NOFLUSH
+ *
  *  7.36
  *  - extend fuse_init_in with reserved fields, add FUSE_INIT_EXT init flag
  *  - add flags2 to fuse_init_in and fuse_init_out
  *  - add FUSE_SECURITY_CTX init flag
  *  - add security context to create, mkdir, symlink, and mknod requests
+ *  - add FUSE_HAS_INODE_DAX, FUSE_ATTR_DAX
+ *
+ *  7.37
+ *  - add FUSE_TMPFILE
  */
 
 #ifndef _LINUX_FUSE_H
@@ -221,7 +228,7 @@
 #define FUSE_KERNEL_VERSION 7
 
 /** Minor version number of this interface */
-#define FUSE_KERNEL_MINOR_VERSION 36
+#define FUSE_KERNEL_MINOR_VERSION 37
 
 /** The node ID of the root inode */
 #define FUSE_ROOT_ID 1
@@ -292,12 +299,14 @@ struct fuse_file_lock {
  * FOPEN_NONSEEKABLE: the file is not seekable
  * FOPEN_CACHE_DIR: allow caching this directory
  * FOPEN_STREAM: the file is stream-like (no file position at all)
+ * FOPEN_NOFLUSH: don't flush data cache on close (unless FUSE_WRITEBACK_CACHE)
  */
 #define FOPEN_DIRECT_IO		(1 << 0)
 #define FOPEN_KEEP_CACHE	(1 << 1)
 #define FOPEN_NONSEEKABLE	(1 << 2)
 #define FOPEN_CACHE_DIR		(1 << 3)
 #define FOPEN_STREAM		(1 << 4)
+#define FOPEN_NOFLUSH		(1 << 5)
 
 /**
  * INIT request/reply flags
@@ -339,8 +348,10 @@ struct fuse_file_lock {
  *			execute permission. (Same as Linux VFS behavior).
  * FUSE_SETXATTR_EXT:	Server supports extended struct fuse_setxattr_in
  * FUSE_INIT_EXT: extended fuse_init_in request
+ * FUSE_INIT_RESERVED: reserved, do not use
  * FUSE_SECURITY_CTX:	add security context to create, mkdir, symlink, and
  *			mknod
+ * FUSE_HAS_INODE_DAX:  use per inode DAX
  */
 #define FUSE_ASYNC_READ		(1 << 0)
 #define FUSE_POSIX_LOCKS	(1 << 1)
@@ -373,9 +384,22 @@ struct fuse_file_lock {
 #define FUSE_HANDLE_KILLPRIV_V2	(1 << 28)
 #define FUSE_SETXATTR_EXT	(1 << 29)
 #define FUSE_INIT_EXT		(1 << 30)
-#define FUSE_PASSTHROUGH	(1 << 31)
+#define FUSE_INIT_RESERVED	(1 << 31)
 /* bits 32..63 get shifted down 32 bits into the flags2 field */
 #define FUSE_SECURITY_CTX	(1ULL << 32)
+#define FUSE_HAS_INODE_DAX	(1ULL << 33)
+
+/*
+ * For FUSE < 7.36 FUSE_PASSTHROUGH has value (1 << 31).
+ * This condition check is not really required, but would prevent having a
+ * broken commit in the tree.
+ */
+#if FUSE_KERNEL_VERSION > 7 ||                                                 \
+	(FUSE_KERNEL_VERSION == 7 && FUSE_KERNEL_MINOR_VERSION >= 36)
+#define FUSE_PASSTHROUGH (1ULL << 63)
+#else
+#define FUSE_PASSTHROUGH (1 << 31)
+#endif
 
 /**
  * CUSE INIT request/reply flags
@@ -458,8 +482,10 @@ struct fuse_file_lock {
  * fuse_attr flags
  *
  * FUSE_ATTR_SUBMOUNT: Object is a submount root
+ * FUSE_ATTR_DAX: Enable DAX for this file in per inode DAX mode
  */
 #define FUSE_ATTR_SUBMOUNT      (1 << 0)
+#define FUSE_ATTR_DAX		(1 << 1)
 
 /**
  * Open flags
@@ -522,6 +548,7 @@ enum fuse_opcode {
 	FUSE_SETUPMAPPING	= 48,
 	FUSE_REMOVEMAPPING	= 49,
 	FUSE_SYNCFS		= 50,
+	FUSE_TMPFILE		= 51,
 	FUSE_CANONICAL_PATH	= 2016,
 
 	/* CUSE specific operations */
@@ -941,7 +968,7 @@ struct fuse_notify_retrieve_in {
 #define FUSE_DEV_IOC_CLONE		_IOR(FUSE_DEV_IOC_MAGIC, 0, uint32_t)
 /* 127 is reserved for the V1 interface implementation in Android (deprecated) */
 /* 126 is reserved for the V2 interface implementation in Android */
-#define FUSE_DEV_IOC_PASSTHROUGH_OPEN	_IOW(FUSE_DEV_IOC_MAGIC, 126, __u32)
+#define FUSE_DEV_IOC_PASSTHROUGH_OPEN	_IOW(FUSE_DEV_IOC_MAGIC, 126, uint32_t)
 
 struct fuse_lseek_in {
 	uint64_t	fh;
