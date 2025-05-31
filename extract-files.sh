@@ -8,8 +8,8 @@ UNPACKBOOTIMG=../../../system/tools/mkbootimg/unpack_bootimg.py
 ROM_ZIP=$1
 
 declare -a DTBO_PANEL_PATCHES=(
-    "Garnet:dsi_n16_42_02_0b_dsc_vid"
-    "Garnet:dsi_n16_36_0d_0a_dsc_vid"
+    "Muyu:dsi_o81_36_02_0a_dualdsi_dsc_lcd_video"
+    "Muyu:dsi_o81_42_02_0b_dualdsi_dsc_lcd_video"
 )
 
 error_handler() {
@@ -57,7 +57,7 @@ if [[ -z $ROM_ZIP ]] || [[ ! -f $ROM_ZIP ]]; then
 fi
 
 # Clean and create needed directories
-for dir in ./modules/vendor_dlkm ./modules/system_dlkm ./modules/vendor_boot ./images ./images/dtbs; do
+for dir in ./modules/vendor ./modules/system ./modules/ramdisk ./dtbs; do
     rm -rf $dir
     mkdir -p $dir
 done
@@ -81,7 +81,7 @@ echo "Extracting at $out"
 unpackbootimg --boot_img $(get_path boot.img) --out $out --format mkbootimg
 
 echo "Done. Copying the kernel"
-cp $out/kernel ./images/kernel
+cp $out/kernel ./kernel
 echo "Done"
 
 # VENDOR_BOOT
@@ -99,7 +99,7 @@ cpio -i -F $out/vendor_ramdisk -D $out/ramdisk
 
 echo "Copying all ramdisk modules"
 for module in $(find $out/ramdisk -name "*.ko" -o -name "modules.load*" -o -name "modules.blocklist"); do
-	cp $module ./modules/vendor_boot/
+	cp $module ./modules/ramdisk/
 done
 
 # VENDOR_DLKM
@@ -113,7 +113,7 @@ echo "Done. Extracting the vendor dlkm"
 
 echo "Copying all vendor dlkm modules"
 for module in $(find $out/lib -name "*.ko" -o -name "modules.load*" -o -name "modules.blocklist"); do
-	cp $module ./modules/vendor_dlkm/
+	cp $module ./modules/vendor/
 done
 
 # SYSTEM_DLKM
@@ -126,17 +126,17 @@ fsck.erofs --extract="$out" $(get_path system_dlkm.img)
 echo "Done. Extracting the system dlkm"
 
 echo "Copying all system dlkm modules"
-cp -r $out/lib/modules/6.1* ./modules/system_dlkm/
+cp -r $out/lib/modules/*/* ./modules/system/
 
 # Extract DTBO and DTBs
 echo "Extracting DTBO and DTBs"
 
-curl -sSL "https://raw.githubusercontent.com/PabloCastellano/extract-dtb/master/extract_dtb/extract_dtb.py" > ${extract_out}/extract_dtb.py
+curl -sSL "https://raw.githubusercontent.com/PabloCastellano/extract-dtb/ab824ac0993efc03a3a9201c5c03f54fda4bcfd0/extract_dtb/extract_dtb.py" > ${extract_out}/extract_dtb.py
 
 # Copy DTB
 python3 "${extract_out}/extract_dtb.py" "${extract_out}/vendor_boot-out/dtb" -o "${extract_out}/dtbs" > /dev/null
 find "${extract_out}/dtbs" -type f -name "*.dtb" \
-    -exec cp {} ./images/dtbs/ \; \
+    -exec cp {} ./dtbs/ \; \
     -exec printf "  - dtbs/" \; \
     -exec basename {} \;
 
@@ -148,18 +148,13 @@ for DTBO_PANEL_PATCH in "${DTBO_PANEL_PATCHES[@]}"; do
     find "${extract_out}/dtbo" -type f -name "*${device}*.dtb" -exec grep -q "${panel}" {} \; \
         -exec bash -c '
             dt_node="$(fdtget -t s "{}" /__symbols__ "'${panel}'")";
-            panel_height="$(fdtget -t i "{}" $dt_node "qcom,mdss-pan-physical-height-dimension")";
-            panel_width="$(fdtget -t i "{}" $dt_node "qcom,mdss-pan-physical-width-dimension")";
-            fdtput -t li "{}" "$dt_node" qcom,mdss-pan-physical-height-dimension "$((panel_height / 10))";
-            fdtput -t li "{}" "$dt_node" qcom,mdss-pan-physical-width-dimension "$((panel_width / 10))";
-            fdtput -t i "{}" "$dt_node" qcom,dsi-supported-dfps-list 60 120 90;
-            fdtput -t i "{}" "$dt_node" qcom,mdss-dsi-bl-min-level 8;
+            fdtput -t i "{}" "$dt_node" qcom,dsi-supported-dfps-list 120 144 90 60;
         ' \; \
-        -exec printf "    + Fixed up panel dimensions and removed 30hz of ${panel} in dtbo/" \; \
+        -exec printf "    + Removed useless timing of ${panel} in dtbo/" \; \
         -exec basename {} \;
 done
 mkdtboimg \
-    create "./images/dtbo.img" --page_size=4096 "${extract_out}/dtbo/"*.dtb
+    create "./dtbo.img" --page_size=4096 "${extract_out}/dtbo/"*.dtb
 echo "    + Generated images/dtbo.img"
 
 rm -rf $extract_out
