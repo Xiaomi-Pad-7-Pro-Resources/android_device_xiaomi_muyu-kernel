@@ -126,7 +126,8 @@ fsck.erofs --extract="$out" $(get_path system_dlkm.img)
 echo "Done. Extracting the system dlkm"
 
 echo "Copying all system dlkm modules"
-cp -r $out/lib/modules/*/* ./modules/system/
+cp -r $out/lib/modules/6.1* ./modules/system/
+cp -r $out/flatten/lib/modules ./modules/system/flatten
 
 # Extract DTBO and DTBs
 echo "Extracting DTBO and DTBs"
