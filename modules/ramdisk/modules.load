@@ -73,6 +73,7 @@ qti-regmap-debugfs.ko
 zram.ko
 mi_power.ko
 hwid.ko
+mi_sw_sync.ko
 qcom-i2c-pmic.ko
 qcom-spmi-pmic.ko
 qcom_dma_heaps.ko
@@ -114,6 +115,7 @@ icc-test.ko
 mi_memory.ko
 ufs_ffu.ko
 dump_display.ko
+kshrink_slabd.ko
 mi_schedule.ko
 metis.ko
 mist.ko
