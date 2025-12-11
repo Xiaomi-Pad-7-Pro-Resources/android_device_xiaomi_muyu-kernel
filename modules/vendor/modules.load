@@ -283,7 +283,6 @@ ubwcp.ko
 btpower.ko
 bt_fm_slim.ko
 radio-i2c-rtc6226-qca.ko
-tango32.ko
 xiaomi_touch.ko
 nt36532_touch.ko
 qca_cld3_kiwi_v2.ko
